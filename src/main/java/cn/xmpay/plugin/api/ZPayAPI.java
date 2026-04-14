@@ -293,42 +293,6 @@ public class ZPayAPI {
     }
 
     // ========================================
-    // 退款
-    // ========================================
-
-    /**
-     * 提交退款申请
-     */
-    public ApiResult refundOrder(String outTradeNo, String money) {
-        XMPayConfig cfg = plugin.getXMPayConfig();
-
-        RequestBody body = new FormBody.Builder()
-                .add("pid", cfg.getPid())
-                .add("key", cfg.getKey())
-                .add("out_trade_no", outTradeNo)
-                .add("money", money)
-                .build();
-
-        Request request = new Request.Builder()
-                .url(cfg.getApiUrl() + "/api.php?act=refund")
-                .post(body)
-                .addHeader("User-Agent", "XMPay/1.0 Minecraft-Plugin")
-                .build();
-
-        try {
-            Response response = httpClient.newCall(request).execute();
-            String responseBody = response.body() != null ? response.body().string() : "{}";
-            JsonObject json = gson.fromJson(responseBody, JsonObject.class);
-            int code = json.has("code") ? json.get("code").getAsInt() : -1;
-            String msg = json.has("msg") ? json.get("msg").getAsString() : "";
-            return new ApiResult(code == 1, msg);
-        } catch (IOException e) {
-            plugin.getLogger().log(Level.WARNING, "退款请求失败", e);
-            return new ApiResult(false, "网络错误: " + e.getMessage());
-        }
-    }
-
-    // ========================================
     // 签名验证（用于回调通知）
     // ========================================
 
