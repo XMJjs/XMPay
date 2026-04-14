@@ -130,6 +130,10 @@ public class XMPayConfig {
         return config.getInt("economy.playerpoints.rate", 100);
     }
 
+    public String getEconomyUnit() {
+        return config.getString("economy.unit", "金币");
+    }
+
     // ===== 地图配置 =====
 
     public boolean isMapEnabled() {
