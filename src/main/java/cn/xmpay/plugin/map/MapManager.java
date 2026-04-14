@@ -91,8 +91,8 @@ public class MapManager {
             // 保存地图ID到订单
             order.setMapId(mapView.getId());
 
-            // 检查背包是否有空位
-            if (!player.getInventory().firstEmpty().isPresent()) {
+            // 检查背包是否有空位（Paper 1.20+ firstEmpty() 返回 OptionalInt）
+            if (player.getInventory().firstEmpty() == -1) {
                 plugin.getLogger().info("玩家 " + player.getName() + " 背包已满，拒绝发放支付地图");
                 mapView.removeRenderer(renderer);
                 activeRenderers.remove(mapView.getId());
@@ -176,7 +176,7 @@ public class MapManager {
         activeRenderers.remove(mapId);
         // 尝试移除玩家背包中的地图
         for (Player online : Bukkit.getOnlinePlayers()) {
-            removeMapFromPlayer(online, mapId);
+            plugin.getOrderManager().removeMapFromPlayer(online, mapId);
         }
     }
 
