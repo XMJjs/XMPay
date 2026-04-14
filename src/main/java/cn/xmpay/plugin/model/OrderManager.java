@@ -209,7 +209,7 @@ public class OrderManager {
     /**
      * 从玩家背包中移除指定ID的支付地图
      */
-    private void removeMapFromPlayer(org.bukkit.entity.Player player, int mapId) {
+    public void removeMapFromPlayer(org.bukkit.entity.Player player, int mapId) {
         if (mapId < 0) return;
         org.bukkit.Material mapType = org.bukkit.Material.FILLED_MAP;
         org.bukkit.inventory.ItemStack[] contents = player.getInventory().getContents();
