@@ -112,8 +112,7 @@ public class MapManager {
             meta.setLore(lore);
             mapItem.setItemMeta(meta);
 
-            // 给予玩家并强制放主手
-            player.getInventory().addItem(mapItem);
+            // 直接放主手，不走 addItem（避免 addItem 复制一份到背包导致重复）
             player.getInventory().setItemInMainHand(mapItem);
 
             // 设置自动过期（若配置了显示时长）
