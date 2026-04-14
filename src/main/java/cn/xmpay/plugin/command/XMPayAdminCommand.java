@@ -49,6 +49,8 @@ public class XMPayAdminCommand implements CommandExecutor, TabCompleter {
         switch (args[0].toLowerCase()) {
             case "reload" -> handleReload(sender);
             case "info" -> handleInfo(sender);
+            case "check" -> handleCheck(sender);
+            case "test" -> handleTest(sender);
             case "orders" -> handleOrders(sender);
             case "order" -> handleOrderDetail(sender, args);
             case "cancel" -> handleCancel(sender, args);
@@ -70,6 +72,8 @@ public class XMPayAdminCommand implements CommandExecutor, TabCompleter {
         sender.sendMessage(XMPayConfig.colorize("&e/xmpayadmin cancel &b<单号> &7- 取消订单"));
         sender.sendMessage(XMPayConfig.colorize("&e/xmpayadmin refund &b<单号> &7- 申请退款"));
         sender.sendMessage(XMPayConfig.colorize("&e/xmpayadmin rate &b<汇率> &7- 设置兑换率（临时）"));
+        sender.sendMessage(XMPayConfig.colorize("&e/xmpayadmin check &7- 检测支付服务配置状态"));
+        sender.sendMessage(XMPayConfig.colorize("&e/xmpayadmin test &7- 测试支付API实际连通性"));
         sender.sendMessage(XMPayConfig.colorize("&e/xmpayadmin pay &b<玩家> <金额> [类型] &7- 代发支付"));
     }
 
@@ -80,6 +84,40 @@ public class XMPayAdminCommand implements CommandExecutor, TabCompleter {
         } catch (Exception e) {
             sender.sendMessage(XMPayConfig.colorize("&c重载失败: " + e.getMessage()));
         }
+    }
+
+    private void handleCheck(CommandSender sender) {
+        sender.sendMessage(XMPayConfig.colorize("&8===== &6支付服务检测 &8====="));
+        ZPayAPI.ServiceCheckResult result = plugin.getZPayAPI().checkServiceAvailability();
+        if (result.available) {
+            sender.sendMessage(XMPayConfig.colorize("&a✔ 支付服务可用"));
+        } else {
+            sender.sendMessage(XMPayConfig.colorize("&c✘ 支付服务不可用"));
+            sender.sendMessage(XMPayConfig.colorize("&e原因: &f" + result.message));
+        }
+        sender.sendMessage(XMPayConfig.colorize("&7商户ID: &f" + plugin.getXMPayConfig().getPid()));
+        sender.sendMessage(XMPayConfig.colorize("&7API地址: &f" + plugin.getXMPayConfig().getApiUrl()));
+        sender.sendMessage(XMPayConfig.colorize("&7回调地址: &f" + plugin.getXMPayConfig().buildNotifyUrl()));
+        sender.sendMessage(XMPayConfig.colorize("&7调试模式: &f" + plugin.getXMPayConfig().isDebug()));
+    }
+
+    private void handleTest(CommandSender sender) {
+        sender.sendMessage(XMPayConfig.colorize("&e正在测试支付API连通性..."));
+        plugin.getServer().getScheduler().runTaskAsynchronously(plugin, () -> {
+            ZPayAPI.ApiResult result = plugin.getZPayAPI().testConnection();
+            plugin.getServer().getScheduler().runTask(plugin, () -> {
+                if (result.success) {
+                    sender.sendMessage(XMPayConfig.colorize("&a✔ API连通性正常"));
+                    if (result.payUrl != null) {
+                        sender.sendMessage(XMPayConfig.colorize("&7支付链接: &f" + result.payUrl));
+                    }
+                } else {
+                    sender.sendMessage(XMPayConfig.colorize("&c✘ API连通性失败"));
+                    sender.sendMessage(XMPayConfig.colorize("&e错误: &f" + result.message));
+                    sender.sendMessage(XMPayConfig.colorize("&7请检查: 商户ID/密钥/API地址是否正确"));
+                }
+            });
+        });
     }
 
     private void handleInfo(CommandSender sender) {
@@ -256,7 +294,7 @@ public class XMPayAdminCommand implements CommandExecutor, TabCompleter {
         if (!sender.hasPermission("xmpay.admin")) return completions;
 
         if (args.length == 1) {
-            List<String> subs = Arrays.asList("reload", "info", "orders", "order",
+            List<String> subs = Arrays.asList("reload", "info", "check", "test", "orders", "order",
                     "cancel", "refund", "rate", "pay");
             for (String s : subs) {
                 if (s.startsWith(args[0].toLowerCase())) completions.add(s);
