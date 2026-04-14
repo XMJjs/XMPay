@@ -154,12 +154,13 @@ public class OrderManager {
                 removeFromActive(order);
                 addToHistory(order);
 
-                // 通知玩家（回到主线程）
+                // 通知玩家并移除背包中的支付地图（主线程执行）
                 plugin.getServer().getScheduler().runTask(plugin, () -> {
                     org.bukkit.entity.Player p = plugin.getServer()
                             .getPlayer(order.getPlayerUUID());
                     if (p != null && p.isOnline()) {
                         p.sendMessage(plugin.getXMPayConfig().getMessage("payment-timeout"));
+                        removeMapFromPlayer(p, order.getMapId());
                     }
                 });
 
@@ -203,6 +204,28 @@ public class OrderManager {
     private void removeFromActive(PayOrder order) {
         activeOrders.remove(order.getOutTradeNo());
         playerActiveOrder.remove(order.getPlayerUUID());
+    }
+
+    /**
+     * 从玩家背包中移除指定ID的支付地图
+     */
+    private void removeMapFromPlayer(org.bukkit.entity.Player player, int mapId) {
+        if (mapId < 0) return;
+        org.bukkit.Material mapType = org.bukkit.Material.FILLED_MAP;
+        org.bukkit.inventory.ItemStack[] contents = player.getInventory().getContents();
+        for (int i = 0; i < contents.length; i++) {
+            org.bukkit.inventory.ItemStack item = contents[i];
+            if (item != null && item.getType() == mapType) {
+                org.bukkit.inventory.meta.MapMeta meta = (org.bukkit.inventory.meta.MapMeta) item.getItemMeta();
+                if (meta.hasMapView() && meta.getMapView().getId() == mapId) {
+                    player.getInventory().setItem(i, null);
+                    if (plugin.getXMPayConfig().isDebug()) {
+                        plugin.getLogger().info("已从玩家背包移除过期支付地图: " + mapId);
+                    }
+                    return;
+                }
+            }
+        }
     }
 
     private void addToHistory(PayOrder order) {
