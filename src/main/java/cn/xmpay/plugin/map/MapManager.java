@@ -91,6 +91,14 @@ public class MapManager {
             // 保存地图ID到订单
             order.setMapId(mapView.getId());
 
+            // 检查背包是否有空位
+            if (!player.getInventory().firstEmpty().isPresent()) {
+                plugin.getLogger().info("玩家 " + player.getName() + " 背包已满，拒绝发放支付地图");
+                mapView.removeRenderer(renderer);
+                activeRenderers.remove(mapView.getId());
+                return false;
+            }
+
             // 创建地图物品
             ItemStack mapItem = new ItemStack(Material.FILLED_MAP);
             MapMeta meta = (MapMeta) mapItem.getItemMeta();
@@ -104,8 +112,9 @@ public class MapManager {
             meta.setLore(lore);
             mapItem.setItemMeta(meta);
 
-            // 给予玩家
+            // 给予玩家并强制放主手
             player.getInventory().addItem(mapItem);
+            player.getInventory().setItemInMainHand(mapItem);
 
             // 设置自动过期（若配置了显示时长）
             int duration = plugin.getXMPayConfig().getMapDisplayDuration();
@@ -154,17 +163,21 @@ public class MapManager {
 
     private void scheduleMapExpiry(Player player, PayOrder order, int durationSeconds) {
         Bukkit.getScheduler().runTaskLaterAsynchronously(plugin, () -> {
-            // 如果订单还在等待状态，通知玩家地图已过期
-            if (order.isPending()) {
-                Bukkit.getScheduler().runTask(plugin, () -> {
-                    if (player.isOnline()) {
-                        player.sendMessage(plugin.getXMPayConfig().getMessage("payment-timeout"));
-                    }
-                });
-            }
-            // 移除渲染器
+            // 只移除渲染器，不通知玩家（checkTimeouts 在主线程统一处理通知）
             activeRenderers.remove(order.getMapId());
         }, 20L * durationSeconds);
+    }
+
+    /**
+     * 移除指定地图ID的渲染器（回调成功时调用）
+     */
+    public void removeRenderer(int mapId) {
+        if (mapId < 0) return;
+        activeRenderers.remove(mapId);
+        // 尝试移除玩家背包中的地图
+        for (Player online : Bukkit.getOnlinePlayers()) {
+            removeMapFromPlayer(online, mapId);
+        }
     }
 
     /**
@@ -231,16 +244,19 @@ public class MapManager {
                 }
             }
 
-            // 绘制标题文字
+            // 绘制标题文字（仅ASCII-safe，地图字体不支持Unicode）
             if (showTypeIcon || showAmount) {
-                String title = (showTypeIcon ? payTypeName + " " : "") +
-                               (showAmount ? "¥" + String.format("%.2f", money) : "");
-                // 在顶部区域绘制文字（Map Canvas的drawText）
-                canvas.drawText(2, 2, MinecraftFont.Font, title);
+                String title = (showTypeIcon ? "PAY" : "") +
+                               (showAmount ? " " + String.format("%.2f", money) : "");
+                // drawText 仅接受ASCII字符，过滤所有非ASCII字符
+                String safeTitle = title.replaceAll("[^\\x20-\\x7E]", "");
+                if (!safeTitle.isEmpty()) {
+                    canvas.drawText(2, 2, MinecraftFont.Font, safeTitle);
+                }
             }
 
             // 底部绘制提示
-            canvas.drawText(2, 120, MinecraftFont.Font, "Scan to Pay");
+            canvas.drawText(2, 120, MinecraftFont.Font, "Scan Pay");
         }
     }
 }
