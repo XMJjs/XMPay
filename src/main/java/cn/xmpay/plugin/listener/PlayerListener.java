@@ -45,7 +45,7 @@ public class PlayerListener implements Listener {
      */
     @EventHandler(ignoreCancelled = false)
     public void onDropItem(PlayerDropItemEvent event) {
-        ItemStack item = event.getItemStack();
+        ItemStack item = event.getItemDrop().getItemStack();
         if (item == null || item.getType() != Material.FILLED_MAP) return;
 
         // 检查是否是活跃订单对应的地图
@@ -58,8 +58,7 @@ public class PlayerListener implements Listener {
 
         // 获取被丢弃物品对应的地图ID
         int droppedMapId = -1;
-        if (item.hasItemMeta()) {
-            MapMeta meta = item.getItemMeta();
+        if (item.hasItemMeta() && item.getItemMeta() instanceof MapMeta meta) {
             if (meta.hasMapView()) {
                 droppedMapId = meta.getMapView().getId();
             }
