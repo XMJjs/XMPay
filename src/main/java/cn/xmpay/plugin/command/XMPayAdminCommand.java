@@ -1,6 +1,7 @@
 package cn.xmpay.plugin.command;
 
 import cn.xmpay.plugin.XMPayPlugin;
+import cn.xmpay.plugin.api.ZPayAPI;
 import cn.xmpay.plugin.config.XMPayConfig;
 import cn.xmpay.plugin.model.PayOrder;
 import org.bukkit.command.*;
