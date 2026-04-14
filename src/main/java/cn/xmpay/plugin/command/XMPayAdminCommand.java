@@ -199,7 +199,7 @@ public class XMPayAdminCommand implements CommandExecutor, TabCompleter {
 
         XMPayCommand cmd = (XMPayCommand) plugin.getCommand("xmpay").getExecutor();
         cmd.initiatePayment(target, "Admin recharge " + String.format("%.2f", amount),
-                amount, payType, null);
+                amount, payType);
     }
 
     @Override
