@@ -1,0 +1,184 @@
+# XMPay 配置文件
+# 游戏内易支付插件 - 支持支付宝/微信支付
+
+# ===========================
+# 易支付平台配置
+# ===========================
+payment:
+  # 易支付平台地址（末尾无斜杠）
+  api-url: "https://zpayz.cn"
+  # 商户ID
+  pid: "YOUR_PID_HERE"
+  # 商户密钥
+  key: "YOUR_KEY_HERE"
+  # 默认支付方式: alipay | wxpay | qqpay
+  default-type: "alipay"
+  # 启用的支付方式
+  enabled-types:
+    - alipay
+    - wxpay
+  # 支付渠道ID（可选，留空则随机）
+  cid: ""
+  # 订单超时时间（分钟）
+  order-timeout: 30
+  # 回调通知地址（必须是公网可访问的地址）
+  # 留空则使用内置HTTP服务器
+  notify-url: ""
+  # 跳转地址（支付完成后浏览器跳转）
+  return-url: ""
+
+# ===========================
+# 内置HTTP回调服务器
+# ===========================
+http-server:
+  # 是否启用内置HTTP服务器
+  enabled: true
+  # 监听端口
+  port: 25566
+  # 绑定地址（0.0.0.0 为全部网卡）
+  bind: "0.0.0.0"
+  # 回调路径
+  callback-path: "/xmpay/notify"
+  # 公网地址（用于生成notify_url），留空则自动探测
+  public-host: ""
+
+# ===========================
+# 经济系统对接
+# ===========================
+economy:
+  # 主要经济源: vault | playerpoints | custom
+  primary: "vault"
+  # 汇率：1元人民币 = X 游戏货币
+  rate: 100.0
+  # 是否启用手续费
+  fee-enabled: false
+  # 手续费率（百分比，如 2.5 表示2.5%）
+  fee-rate: 0.0
+  # 最低充值金额（元）
+  min-amount: 0.01
+  # 最大充值金额（元）
+  max-amount: 9999.00
+  # PlayerPoints 配置（当primary为playerpoints时生效）
+  playerpoints:
+    # 1元 = X 点券
+    rate: 100
+
+# ===========================
+# 地图渲染配置
+# ===========================
+map:
+  # 是否启用地图二维码功能
+  enabled: true
+  # 地图显示时长（秒，0为永久）
+  display-duration: 120
+  # 二维码颜色（RGB）
+  qr-color-dark: "0,0,0"
+  qr-color-light: "255,255,255"
+  # 是否显示支付金额水印
+  show-amount: true
+  # 是否显示支付方式图标
+  show-type-icon: true
+
+# ===========================
+# 身份权限与自定义指令
+# ===========================
+roles:
+  # 默认玩家（所有人）
+  default:
+    # 支付成功后执行的指令列表
+    # 可用占位符: {player} {amount} {money} {order_no} {type}
+    on-payment-success: []
+    # 支付前执行的指令
+    on-payment-start: []
+
+  # VIP玩家（拥有 xmpay.vip 权限）
+  vip:
+    on-payment-success:
+      - "eco give {player} {amount}"
+    on-payment-start: []
+
+  # OP/管理员（拥有 xmpay.admin 权限）
+  admin:
+    on-payment-success:
+      - "eco give {player} {amount}"
+    on-payment-start: []
+
+# ===========================
+# 充值套餐配置
+# ===========================
+packages:
+  enabled: true
+  list:
+    - id: "pkg_1"
+      name: "&6【初级】10元 = 1000金币"
+      amount: 10.00
+      bonus: 0
+      commands:
+        - "eco give {player} 1000"
+      icon: GOLD_INGOT
+      slot: 10
+
+    - id: "pkg_2"
+      name: "&b【普通】30元 = 3500金币"
+      amount: 30.00
+      bonus: 500
+      commands:
+        - "eco give {player} 3500"
+      icon: GOLD_BLOCK
+      slot: 11
+
+    - id: "pkg_3"
+      name: "&d【高级】100元 = 12000金币"
+      amount: 100.00
+      bonus: 2000
+      commands:
+        - "eco give {player} 12000"
+      icon: DIAMOND
+      slot: 12
+
+    - id: "pkg_4"
+      name: "&6【VIP专属】50元 = 6000金币"
+      amount: 50.00
+      bonus: 1000
+      required-permission: "xmpay.vip"
+      commands:
+        - "eco give {player} 6000"
+        - "lp user {player} permission set xmpay.vip true"
+      icon: NETHER_STAR
+      slot: 13
+
+# ===========================
+# 消息配置
+# ===========================
+messages:
+  prefix: "&8[&6XM&eP&6ay&8] &r"
+  no-permission: "&c你没有权限执行此操作！"
+  payment-created: "&a订单已创建！请在 &e{timeout} 分钟 &a内完成支付。"
+  payment-success: "&a充值成功！你已收到 &e{amount} &a游戏货币。"
+  payment-cancelled: "&c支付已取消。"
+  payment-timeout: "&c订单已超时，请重新发起支付。"
+  order-not-found: "&c找不到该订单。"
+  invalid-amount: "&c无效的金额，请输入 {min} - {max} 元。"
+  map-hint: "&e地图已给予，手持地图即可看到支付二维码！"
+  server-error: "&c支付服务暂时不可用，请稍后再试。"
+  cooldown: "&c操作太频繁，请等待 &e{seconds} 秒 &c后再试。"
+  reload-success: "&a配置已重载！"
+  already-pending: "&c你已有一笔待处理的订单，请完成或取消后再试。"
+
+# ===========================
+# 安全与防护
+# ===========================
+security:
+  # 操作冷却时间（秒）
+  cooldown: 5
+  # 每日最大充值次数（0 = 无限）
+  max-daily-orders: 20
+  # 签名验证（强烈建议开启）
+  verify-sign: true
+  # IP白名单（留空则不限制回调来源IP）
+  notify-ip-whitelist: []
+
+# ===========================
+# 调试
+# ===========================
+debug: false

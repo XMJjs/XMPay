@@ -1,0 +1,20 @@
+# Maven
+target/
+*.class
+*.jar
+!src/**
+
+# IDE
+.idea/
+*.iml
+.vscode/
+*.suo
+*.user
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Test servers
+test-server/
+run/
