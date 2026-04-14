@@ -13,11 +13,20 @@ import org.bukkit.Material;
 import org.bukkit.entity.Player;
 import org.bukkit.inventory.ItemStack;
 import org.bukkit.inventory.meta.MapMeta;
-import org.bukkit.map.*;
+import org.bukkit.map.MapCanvas;
+import org.bukkit.map.MapPalette;
+import org.bukkit.map.MapRenderer;
+import org.bukkit.map.MapView;
+import org.bukkit.map.MinecraftFont;
 
-import java.awt.*;
+import java.awt.Color;
+import java.awt.Graphics2D;
 import java.awt.image.BufferedImage;
-import java.util.*;
+import java.util.ArrayList;
+import java.util.EnumMap;
+import java.util.HashMap;
+import java.util.List;
+import java.util.Map;
 import java.util.logging.Level;
 
 /**
@@ -181,16 +190,21 @@ public class MapManager {
         }
 
         @Override
+        @SuppressWarnings("deprecation")
         public void render(MapView map, MapCanvas canvas, Player player) {
             if (rendered) return;
             rendered = true;
+
+            // 预缓存颜色值，兼容所有Paper版本
+            final byte WHITE_COLOR = MapPalette.matchColor(Color.WHITE);
+            final byte BLACK_COLOR = MapPalette.matchColor(Color.BLACK);
 
             // 地图画布为128x128像素
 
             // 绘制白色背景
             for (int x = 0; x < 128; x++) {
                 for (int y = 0; y < 128; y++) {
-                    canvas.setPixel(x, y, MapPalette.WHITE);
+                    canvas.setPixel(x, y, WHITE_COLOR);
                 }
             }
 
@@ -207,12 +221,12 @@ public class MapManager {
                     imgX = Math.min(imgX, qrImage.getWidth() - 1);
                     imgY = Math.min(imgY, qrImage.getHeight() - 1);
 
-                    int rgb = qrImage.getRGB(imgX, imgY);
-                    int r = (rgb >> 16) & 0xFF;
-                    int g = (rgb >> 8) & 0xFF;
-                    int b = rgb & 0xFF;
-                    // 简单判断黑白
-                    byte mapColor = (r + g + b < 384) ? MapPalette.BLACK : MapPalette.WHITE;
+                    int argb = qrImage.getRGB(imgX, imgY);
+                    int r = (argb >> 16) & 0xFF;
+                    int g2 = (argb >> 8) & 0xFF;
+                    int b = argb & 0xFF;
+                    // 简单判断黑白，使用预缓存的颜色值
+                    byte mapColor = (r + g2 + b < 384) ? BLACK_COLOR : WHITE_COLOR;
                     canvas.setPixel(qrStartX + x, topOffset + y, mapColor);
                 }
             }
