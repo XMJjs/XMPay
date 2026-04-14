@@ -1,5 +1,7 @@
 # XMPay - 游戏内易支付插件
 
+> 🤖 由 AI 编写 | 欢迎 Fork 并提出建议！
+
 ![Build Status](https://github.com/XMJjs/XMPay/actions/workflows/build.yml/badge.svg)
 ![License](https://img.shields.io/badge/license-MIT-blue.svg)
 ![Paper](https://img.shields.io/badge/Paper-1.20%2B-green.svg)
@@ -18,10 +20,9 @@
 | 🗺️ 地图二维码 | 在游戏地图上渲染支付二维码，手持即扫 |
 | 💰 经济对接 | 支持 Vault（EssX等）、PlayerPoints 点券 |
 | 🔐 多身份指令 | 根据玩家权限（默认/VIP/管理员）执行不同指令 |
-| 📦 充值套餐 | 可配置的套餐GUI界面，支持权限限制 |
-| 🌐 HTTP回调 | 内置回调服务器，无需额外配置 |
-| 🛡️ 安全验证 | MD5签名验证、IP白名单、操作冷却 |
-| ⚙️ 高度可配 | 汇率、手续费、超时时间、商户信息均可自定义 |
+| 🛡️ 安全验证 | MD5签名验证、IP白名单、操作冷却、X-Forwarded-For 代理识别 |
+| ⚙️ 高度可配 | 汇率、手息费、超时时间、商户信息均可自定义 |
+| 🔒 物品保护 | 地图强制主手持有，掉落自动取消订单，背包满时拒绝发地图 |
 
 ---
 
@@ -88,23 +89,6 @@ economy:
   max-amount: 9999.00   # 最高充值金额（元）
 ```
 
-### 充值套餐配置
-
-```yaml
-packages:
-  enabled: true
-  list:
-    - id: "pkg_1"
-      name: "&6【初级】10元 = 1000金币"
-      amount: 10.00                    # 充值金额（元）
-      bonus: 0                         # 额外赠送货币
-      commands:                        # 充值成功执行的指令
-        - "eco give {player} 1000"
-      icon: GOLD_INGOT                 # 图标材质
-      slot: 10                         # GUI中的位置（0-53）
-      required-permission: ""          # 需要的权限（留空则所有人可见）
-```
-
 ### 身份权限指令
 
 支持根据玩家身份执行不同指令：
@@ -143,7 +127,7 @@ roles:
 
 | 指令 | 说明 | 权限 |
 |------|------|------|
-| `/xmpay` | 打开充值套餐界面 | `xmpay.use` |
+| `/xmpay` | 打开帮助菜单 | `xmpay.use` |
 | `/xmpay pay <金额> [方式]` | 自定义金额支付 | `xmpay.pay` |
 | `/xmpay order` | 查看当前订单 | `xmpay.order.query` |
 | `/xmpay order cancel` | 取消当前订单 | `xmpay.order.query` |
@@ -194,7 +178,7 @@ mvn clean package
 ## 📞 支持
 
 - Issues: [GitHub Issues](https://github.com/XMJjs/XMPay/issues)
-- 易支付文档: https://zpayz.cn
+- 易支付文档: [CY易支付](https://mzf.lovexmj.top/index.php/doc)
 
 ---
 
