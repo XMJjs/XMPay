@@ -12,8 +12,7 @@ public class PayOrder {
         PENDING,    // 待支付
         PAID,       // 已支付
         CANCELLED,  // 已取消
-        TIMEOUT,    // 已超时
-        REFUNDED    // 已退款
+        TIMEOUT     // 已超时
     }
 
     public enum PayType {
