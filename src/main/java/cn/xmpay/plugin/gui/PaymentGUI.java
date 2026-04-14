@@ -29,8 +29,8 @@ public class PaymentGUI implements Listener {
     private final Inventory inventory;
     private final Map<Integer, XMPayConfig.PaymentPackage> slotToPackage = new HashMap<>();
 
-    // GUI标题
-    private static final String TITLE = XMPayConfig.colorize("&6⚡ XMPay 充值中心 ⚡");
+    // GUI标题（纯ASCII，避免地图字体渲染崩溃）
+    private static final String TITLE = XMPayConfig.colorize("&6[&eXMPay&6] &eRecharge Center");
 
     public PaymentGUI(XMPayPlugin plugin, Player player) {
         this.plugin = plugin;
