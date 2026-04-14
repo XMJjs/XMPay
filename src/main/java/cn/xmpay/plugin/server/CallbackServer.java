@@ -89,12 +89,14 @@ public class CallbackServer {
                 XMPayConfig cfg = plugin.getXMPayConfig();
                 List<String> ipWhitelist = cfg.getNotifyIpWhitelist();
                 if (!ipWhitelist.isEmpty()) {
-                    String remoteIp = exchange.getRemoteAddress().getAddress().getHostAddress();
+                    String remoteIp = getRealClientIp(exchange);
                     if (!ipWhitelist.contains(remoteIp)) {
-                        plugin.getLogger().warning("回调IP不在白名单: " + remoteIp);
+                        plugin.getLogger().warning("[XMPay] 回调IP不在白名单，已拒绝: " + remoteIp);
                         sendResponse(exchange, 403, "Forbidden");
                         return;
                     }
+                } else if (cfg.isDebug()) {
+                    plugin.getLogger().info("[XMPay] 回调IP白名单未配置，已跳过IP校验");
                 }
 
                 response = processNotify(params);
@@ -113,8 +115,12 @@ public class CallbackServer {
         private String processNotify(Map<String, String> params) {
             XMPayConfig cfg = plugin.getXMPayConfig();
 
-            if (plugin.getXMPayConfig().isDebug()) {
-                plugin.getLogger().info("[Callback] 收到通知: " + params);
+            plugin.getLogger().info("[XMPay] 收到支付回调: " + params);
+
+            if (!"TRADE_SUCCESS".equals(params.get("trade_status"))) {
+                plugin.getLogger().info("[XMPay] 非成功状态回调，已返回success防止重试: "
+                        + params.get("trade_status"));
+                return "success";
             }
 
             // 1. 检查必要参数
@@ -147,10 +153,7 @@ public class CallbackServer {
                 }
             }
 
-            // 4. 只处理成功状态
-            if (!"TRADE_SUCCESS".equals(tradeStatus)) {
-                return "success"; // 非成功状态也要返回success防止重试
-            }
+            // 4. 成功状态已在开头处理完毕
 
             // 5. 查找订单
             PayOrder order = plugin.getOrderManager().getOrder(outTradeNo);
@@ -181,9 +184,11 @@ public class CallbackServer {
             // 7. 标记订单已支付
             plugin.getOrderManager().markPaid(outTradeNo, tradeNo);
 
-            // 8. 在主线程处理支付成功逻辑
+            // 8. 在主线程处理支付成功逻辑（移除地图+发奖励+通知）
             final PayOrder finalOrder = order;
             plugin.getServer().getScheduler().runTask(plugin, () -> {
+                // 立即移除地图渲染器，防止继续渲染
+                plugin.getMapManager().removeRenderer(finalOrder.getMapId());
                 handlePaymentSuccess(finalOrder);
             });
 
@@ -194,28 +199,20 @@ public class CallbackServer {
             org.bukkit.entity.Player player = plugin.getServer()
                     .getPlayer(order.getPlayerUUID());
 
-            // 1. 执行经济发放
-            boolean economyGiven = false;
+            // 1. 执行经济发放（离线玩家也执行，因为Vault/点券无需在线）
             if (plugin.getEconomyManager() != null && plugin.getEconomyManager().isReady()) {
                 double gameAmount = order.getMoney() * plugin.getXMPayConfig().getEconomyRate();
                 plugin.getEconomyManager().give(order.getPlayerUUID(),
                         order.getPlayerName(), gameAmount);
-                economyGiven = true;
             }
 
-            // 2. 执行套餐指令
+            // 2. 执行套餐指令（控制台执行，无需玩家在线）
             String packageId = order.getPackageId();
             if (packageId != null && !packageId.isEmpty()) {
                 for (XMPayConfig.PaymentPackage pkg : plugin.getXMPayConfig().getPackages()) {
                     if (pkg.id.equals(packageId)) {
                         for (String cmd : pkg.commands) {
-                            String parsed = cmd
-                                    .replace("{player}", order.getPlayerName())
-                                    .replace("{amount}", String.format("%.2f",
-                                            order.getMoney() * plugin.getXMPayConfig().getEconomyRate()))
-                                    .replace("{money}", String.format("%.2f", order.getMoney()))
-                                    .replace("{order_no}", order.getOutTradeNo())
-                                    .replace("{type}", order.getPayType().getCode());
+                            String parsed = parseCommand(cmd, order);
                             plugin.getServer().dispatchCommand(
                                     plugin.getServer().getConsoleSender(), parsed);
                         }
@@ -224,31 +221,23 @@ public class CallbackServer {
                 }
             }
 
-            // 3. 执行身份权限指令
-            if (player != null) {
-                String role = "default";
-                if (player.hasPermission("xmpay.admin")) {
-                    role = "admin";
-                } else if (player.hasPermission("xmpay.vip")) {
-                    role = "vip";
-                }
-
-                List<String> roleCmds = plugin.getXMPayConfig()
-                        .getRoleCommands(role, "on-payment-success");
-                for (String cmd : roleCmds) {
-                    String parsed = cmd
-                            .replace("{player}", order.getPlayerName())
-                            .replace("{amount}", String.format("%.2f",
-                                    order.getMoney() * plugin.getXMPayConfig().getEconomyRate()))
-                            .replace("{money}", String.format("%.2f", order.getMoney()))
-                            .replace("{order_no}", order.getOutTradeNo())
-                            .replace("{type}", order.getPayType().getCode());
-                    plugin.getServer().dispatchCommand(
-                            plugin.getServer().getConsoleSender(), parsed);
-                }
+            // 3. 执行身份权限指令（控制台执行，无需玩家在线）
+            String role = "default";
+            if (player != null && player.hasPermission("xmpay.admin")) {
+                role = "admin";
+            } else if (player != null && player.hasPermission("xmpay.vip")) {
+                role = "vip";
             }
 
-            // 4. 通知玩家
+            List<String> roleCmds = plugin.getXMPayConfig()
+                    .getRoleCommands(role, "on-payment-success");
+            for (String cmd : roleCmds) {
+                String parsed = parseCommand(cmd, order);
+                plugin.getServer().dispatchCommand(
+                        plugin.getServer().getConsoleSender(), parsed);
+            }
+
+            // 4. 通知玩家（仅在线时通知）
             if (player != null && player.isOnline()) {
                 String msg = plugin.getXMPayConfig().getMessage("payment-success")
                         .replace("{amount}", String.format("%.2f",
@@ -258,19 +247,47 @@ public class CallbackServer {
                 player.sendMessage(msg);
             }
 
-            plugin.getLogger().info("支付处理完成: 玩家=" + order.getPlayerName()
+            plugin.getLogger().info("[XMPay] 支付处理完成: 玩家=" + order.getPlayerName()
                     + " 金额=" + order.getMoney() + "元 订单=" + order.getOutTradeNo());
+        }
+
+        /**
+         * 替换指令占位符
+         */
+        private String parseCommand(String cmd, PayOrder order) {
+            return cmd
+                    .replace("{player}", order.getPlayerName())
+                    .replace("{amount}", String.format("%.2f",
+                            order.getMoney() * plugin.getXMPayConfig().getEconomyRate()))
+                    .replace("{money}", String.format("%.2f", order.getMoney()))
+                    .replace("{order_no}", order.getOutTradeNo())
+                    .replace("{type}", order.getPayType().getCode());
+        }
+
+        /**
+         * 获取真实客户端IP（优先从 X-Forwarded-For 获取）
+         */
+        private String getRealClientIp(HttpExchange exchange) {
+            String forwarded = exchange.getRequestHeaders().getFirst("X-Forwarded-For");
+            if (forwarded != null && !forwarded.isEmpty()) {
+                // X-Forwarded-For 可能包含多个IP，取第一个
+                return forwarded.split(",")[0].trim();
+            }
+            return exchange.getRemoteAddress().getAddress().getHostAddress();
         }
 
         private Map<String, String> parseQuery(String query) {
             Map<String, String> map = new LinkedHashMap<>();
             if (query == null || query.isEmpty()) return map;
             for (String pair : query.split("&")) {
-                int idx = pair.indexOf("=");
+                int idx = pair.indexOf('=');
                 if (idx > 0) {
                     try {
-                        String key = URLDecoder.decode(pair.substring(0, idx), "UTF-8");
-                        String val = URLDecoder.decode(pair.substring(idx + 1), "UTF-8");
+                        String key = URLDecoder.decode(pair.substring(0, idx), StandardCharsets.UTF_8);
+                        // 支持 value 中包含 = 的情况（从 idx+1 开始取全部）
+                        String val = idx + 1 < pair.length()
+                                ? URLDecoder.decode(pair.substring(idx + 1), StandardCharsets.UTF_8)
+                                : "";
                         map.put(key, val);
                     } catch (Exception ignored) {}
                 }
