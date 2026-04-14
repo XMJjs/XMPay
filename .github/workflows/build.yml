@@ -1,0 +1,123 @@
+name: Build & Release XMPay
+
+on:
+  push:
+    branches:
+      - main
+      - master
+    tags:
+      - 'v*'
+  pull_request:
+    branches:
+      - main
+      - master
+  workflow_dispatch:
+
+jobs:
+  build:
+    name: Build XMPay Plugin
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout Code
+        uses: actions/checkout@v4
+
+      - name: Set up JDK 17
+        uses: actions/setup-java@v4
+        with:
+          java-version: '17'
+          distribution: 'temurin'
+          cache: maven
+
+      - name: Build with Maven
+        run: mvn clean package -B --no-transfer-progress
+
+      - name: Get version from pom.xml
+        id: get_version
+        run: |
+          VERSION=$(mvn help:evaluate -Dexpression=project.version -q -DforceStdout)
+          echo "version=$VERSION" >> $GITHUB_OUTPUT
+          echo "Plugin version: $VERSION"
+
+      - name: Upload Build Artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: XMPay-${{ steps.get_version.outputs.version }}
+          path: target/XMPay-*.jar
+          retention-days: 30
+
+  release:
+    name: Create Release
+    runs-on: ubuntu-latest
+    needs: build
+    if: startsWith(github.ref, 'refs/tags/v')
+
+    permissions:
+      contents: write
+
+    steps:
+      - name: Checkout Code
+        uses: actions/checkout@v4
+
+      - name: Set up JDK 17
+        uses: actions/setup-java@v4
+        with:
+          java-version: '17'
+          distribution: 'temurin'
+          cache: maven
+
+      - name: Build with Maven
+        run: mvn clean package -B --no-transfer-progress
+
+      - name: Get version from pom.xml
+        id: get_version
+        run: |
+          VERSION=$(mvn help:evaluate -Dexpression=project.version -q -DforceStdout)
+          echo "version=$VERSION" >> $GITHUB_OUTPUT
+
+      - name: Get tag name
+        id: get_tag
+        run: echo "tag=${GITHUB_REF#refs/tags/}" >> $GITHUB_OUTPUT
+
+      - name: Generate Release Notes
+        id: release_notes
+        run: |
+          cat << 'EOF' > release_notes.md
+          ## XMPay ${{ steps.get_version.outputs.version }}
+
+          ### 🎮 游戏内易支付插件
+
+          **功能特性：**
+          - ✅ 支持支付宝 / 微信支付
+          - ✅ 地图二维码展示
+          - ✅ Vault / PlayerPoints 经济对接
+          - ✅ 多身份自定义指令（默认/VIP/管理员）
+          - ✅ 充值套餐GUI界面
+          - ✅ 内置HTTP回调服务器
+          - ✅ 订单超时自动处理
+          - ✅ MD5签名验证
+          - ✅ 自定义商户ID、汇率、手续费
+
+          **服务端要求：** Paper 1.20+，Java 17+
+
+          **安装方法：**
+          1. 将 `XMPay-${{ steps.get_version.outputs.version }}.jar` 放入 `plugins/` 目录
+          2. 启动服务器生成配置文件
+          3. 编辑 `plugins/XMPay/config.yml` 填入商户信息
+          4. 重启服务器或执行 `/xmpayadmin reload`
+
+          **配置说明：** 详见 [README.md](README.md)
+          EOF
+
+      - name: Create GitHub Release
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: ${{ steps.get_tag.outputs.tag }}
+          name: "XMPay ${{ steps.get_version.outputs.version }}"
+          body_path: release_notes.md
+          draft: false
+          prerelease: false
+          files: |
+            target/XMPay-*.jar
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
