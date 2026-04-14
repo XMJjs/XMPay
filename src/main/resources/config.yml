@@ -6,7 +6,7 @@
 # ===========================
 payment:
   # 易支付平台地址（末尾无斜杠）
-  api-url: "https://zpayz.cn"
+  api-url: "https://mzf.lovexmj.top"
   # 商户ID
   pid: "YOUR_PID_HERE"
   # 商户密钥
@@ -62,6 +62,8 @@ economy:
   playerpoints:
     # 1元 = X 点券
     rate: 100
+  # 货币单位名称（如"金币"、"点券"）
+  unit: "金币"
 
 # ===========================
 # 地图渲染配置
@@ -104,57 +106,13 @@ roles:
     on-payment-start: []
 
 # ===========================
-# 充值套餐配置
-# ===========================
-packages:
-  enabled: true
-  list:
-    - id: "pkg_1"
-      name: "&6【初级】10元 = 1000金币"
-      amount: 10.00
-      bonus: 0
-      commands:
-        - "eco give {player} 1000"
-      icon: GOLD_INGOT
-      slot: 10
-
-    - id: "pkg_2"
-      name: "&b【普通】30元 = 3500金币"
-      amount: 30.00
-      bonus: 500
-      commands:
-        - "eco give {player} 3500"
-      icon: GOLD_BLOCK
-      slot: 11
-
-    - id: "pkg_3"
-      name: "&d【高级】100元 = 12000金币"
-      amount: 100.00
-      bonus: 2000
-      commands:
-        - "eco give {player} 12000"
-      icon: DIAMOND
-      slot: 12
-
-    - id: "pkg_4"
-      name: "&6【VIP专属】50元 = 6000金币"
-      amount: 50.00
-      bonus: 1000
-      required-permission: "xmpay.vip"
-      commands:
-        - "eco give {player} 6000"
-        - "lp user {player} permission set xmpay.vip true"
-      icon: NETHER_STAR
-      slot: 13
-
-# ===========================
 # 消息配置
 # ===========================
 messages:
   prefix: "&8[&6XM&eP&6ay&8] &r"
   no-permission: "&c你没有权限执行此操作！"
   payment-created: "&a订单已创建！请在 &e{timeout} 分钟 &a内完成支付。"
-  payment-success: "&a充值成功！你已收到 &e{amount} &a游戏货币。"
+  payment-success: "&a充值成功！你已收到 &e{amount} &a{unit}。"
   payment-cancelled: "&c支付已取消。"
   payment-timeout: "&c订单已超时，请重新发起支付。"
   order-not-found: "&c找不到该订单。"
