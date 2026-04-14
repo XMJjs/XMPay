@@ -35,6 +35,88 @@ public class ZPayAPI {
         buildHttpClient();
     }
 
+    /**
+     * 检查支付服务是否可用（配置完整性检查）
+     * @return 检查结果，包含失败原因
+     */
+    public ServiceCheckResult checkServiceAvailability() {
+        XMPayConfig cfg = plugin.getXMPayConfig();
+
+        if (cfg.getPid() == null || cfg.getPid().trim().isEmpty()) {
+            return new ServiceCheckResult(false, "商户ID未配置 (payment.pid)");
+        }
+        if (cfg.getKey() == null || cfg.getKey().trim().isEmpty()) {
+            return new ServiceCheckResult(false, "商户密钥未配置 (payment.key)");
+        }
+        if (cfg.getApiUrl() == null || cfg.getApiUrl().trim().isEmpty()) {
+            return new ServiceCheckResult(false, "API地址未配置 (payment.api-url)");
+        }
+        String host = cfg.getPublicHost();
+        if (host == null || host.trim().isEmpty()) {
+            return new ServiceCheckResult(false,
+                    "公网地址未配置 (http-server.public-host)，回调通知将无法送达");
+        }
+        return new ServiceCheckResult(true, "配置正常");
+    }
+
+    /**
+     * 测试支付API连通性（实际请求一次下单接口，金额设为0.01测试）
+     * @return 测试结果
+     */
+    public ApiResult testConnection() {
+        XMPayConfig cfg = plugin.getXMPayConfig();
+
+        Map<String, String> params = new LinkedHashMap<>();
+        params.put("pid", cfg.getPid());
+        params.put("type", "alipay");
+        params.put("out_trade_no", "test_" + System.currentTimeMillis());
+        params.put("notify_url", cfg.buildNotifyUrl());
+        params.put("name", "[测试] XMPay连通性检测");
+        params.put("money", "0.01");
+        params.put("clientip", "127.0.0.1");
+        params.put("device", "pc");
+
+        String sign = generateSign(params, cfg.getKey());
+        params.put("sign", sign);
+        params.put("sign_type", "MD5");
+
+        FormBody.Builder formBuilder = new FormBody.Builder();
+        for (Map.Entry<String, String> entry : params.entrySet()) {
+            formBuilder.add(entry.getKey(), entry.getValue());
+        }
+
+        Request request = new Request.Builder()
+                .url(cfg.getApiUrl() + "/mapi.php")
+                .post(formBuilder.build())
+                .addHeader("User-Agent", "XMPay/1.0 Minecraft-Plugin (Test)")
+                .build();
+
+        try {
+            Response response = httpClient.newCall(request).execute();
+            String body = response.body() != null ? response.body().string() : "{}";
+            plugin.getLogger().info("[ZPayAPI] 测试响应: " + body);
+
+            JsonObject json = gson.fromJson(body, JsonObject.class);
+            int code = json.has("code") ? json.get("code").getAsInt() : -1;
+            String msg = json.has("msg") ? json.get("msg").getAsString() : "未知错误";
+            return new ApiResult(code == 1, msg);
+        } catch (IOException e) {
+            return new ApiResult(false, "网络连接失败: " + e.getMessage());
+        }
+    }
+
+    /**
+     * 服务可用性检查结果
+     */
+    public static class ServiceCheckResult {
+        public final boolean available;
+        public final String message;
+        public ServiceCheckResult(boolean available, String message) {
+            this.available = available;
+            this.message = message;
+        }
+    }
+
     public void reload() {
         buildHttpClient();
     }
