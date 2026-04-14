@@ -71,6 +71,8 @@ public class ZPayAPI {
         params.put("type", "alipay");
         params.put("out_trade_no", "test_" + System.currentTimeMillis());
         params.put("notify_url", cfg.buildNotifyUrl());
+        params.put("return_url", cfg.getReturnUrl().isEmpty()
+                ? cfg.buildNotifyUrl() : cfg.getReturnUrl());
         params.put("name", "[测试] XMPay连通性检测");
         params.put("money", "0.01");
         params.put("clientip", "127.0.0.1");
@@ -148,6 +150,8 @@ public class ZPayAPI {
         params.put("type", order.getPayType().getCode());
         params.put("out_trade_no", order.getOutTradeNo());
         params.put("notify_url", cfg.buildNotifyUrl());
+        params.put("return_url", cfg.getReturnUrl().isEmpty()
+                ? cfg.buildNotifyUrl() : cfg.getReturnUrl());
         params.put("name", order.getProductName());
         params.put("money", String.format("%.2f", order.getMoney()));
         params.put("clientip", clientIp != null ? clientIp : "127.0.0.1");
