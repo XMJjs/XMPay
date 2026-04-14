@@ -1,6 +1,7 @@
 package cn.xmpay.plugin.command;
 
 import cn.xmpay.plugin.XMPayPlugin;
+import cn.xmpay.plugin.api.ZPayAPI;
 import cn.xmpay.plugin.config.XMPayConfig;
 import cn.xmpay.plugin.gui.PaymentGUI;
 import cn.xmpay.plugin.model.PayOrder;
@@ -227,7 +228,7 @@ public class XMPayCommand implements CommandExecutor, TabCompleter {
                         // 背包已满时提示玩家清理背包后重新发起支付
                         player.sendMessage(plugin.getXMPayConfig().colorize(
                                 "&c背包已满！请清理背包后重新发起支付 (/xmpay pay "
-                                + String.format("%.2f", money) + ")"));
+                                + String.format("%.2f", amount) + ")"));
                     }
                 }
             });
